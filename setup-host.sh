@@ -24,7 +24,12 @@ DR_VER="${DR_VER:-11.91.20623}"
 DR_TARBALL="DynamoRIO-Linux-${DR_VER}.tar.gz"
 DR_URL="https://github.com/DynamoRIO/dynamorio/releases/download/cronbuild-${DR_VER}/${DR_TARBALL}"
 
-log "node $(hostname): user=$WHO home=$HOME_DIR"
+# The experiment user's PRIMARY GROUP (e.g. nestfarm-PG0 on CloudLab) -- NOT "$WHO":
+# CloudLab has no per-user group named after the login, so chown "$WHO":"$WHO" fails
+# ("invalid group") and, under set -e, aborts the whole setup before DR/venv install.
+WHO_GRP="$(id -gn "$WHO" 2>/dev/null || echo "$WHO")"
+
+log "node $(hostname): user=$WHO group=$WHO_GRP home=$HOME_DIR"
 
 # ---- 1. base packages ----
 export DEBIAN_FRONTEND=noninteractive
@@ -41,13 +46,13 @@ else
   mkdir -p /mnt/nvme
 fi
 mkdir -p /mnt/nvme/scratch
-chown -R "$WHO":"$WHO" /mnt/nvme
+chown -R "$WHO":"$WHO_GRP" /mnt/nvme
 
 # ---- 3. dataset /pdata (RemoteBlockstore mounts it rw; ensure dirs + perms) ----
 if mountpoint -q /pdata; then
   log "/pdata (dataset) mounted"
   mkdir -p /pdata/raw /pdata/text /pdata/results /pdata/figures
-  chown -R "$WHO":"$WHO" /pdata
+  chown -R "$WHO":"$WHO_GRP" /pdata
 else
   log "WARN: /pdata not mounted yet (dataset link may still be coming up)"
 fi
@@ -92,7 +97,7 @@ fi
 REPO=/local/repository
 if [ -d "$REPO/scripts" ]; then
   ln -sfn "$REPO" "$HOME_DIR/google-trace"
-  chown -h "$WHO":"$WHO" "$HOME_DIR/google-trace"
+  chown -h "$WHO":"$WHO_GRP" "$HOME_DIR/google-trace"
   log "analysis repo linked: ~/google-trace -> $REPO"
 else
   log "WARN: $REPO has no scripts/ (profile repo not the analysis repo?)"
