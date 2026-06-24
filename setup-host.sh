@@ -35,8 +35,10 @@ log "node $(hostname): user=$WHO group=$WHO_GRP home=$HOME_DIR"
 export DEBIAN_FRONTEND=noninteractive
 log "installing base packages"
 apt-get update -qq
+# libsnappy1v5 is REQUIRED: DynamoRIO's drmemtrace links libsnappy.so.1 for trace
+# decompression and won't even print -version without it (Ubuntu 24.04 omits it).
 apt-get install -y -qq python3-venv python3-dev build-essential unzip curl \
-    pigz zstd util-linux coreutils >/dev/null
+    pigz zstd util-linux coreutils libsnappy1v5 >/dev/null
 
 # ---- 2. local scratch /mnt/nvme (CloudLab blockstore mounts it; ensure perms) ----
 if mountpoint -q /mnt/nvme; then
